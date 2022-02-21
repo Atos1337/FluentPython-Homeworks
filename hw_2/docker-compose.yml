@@ -1,0 +1,8 @@
+version: '3.7'
+
+services:
+  app:
+    build: .
+    command: python3 generate_picture.py
+    volumes:
+      - ./artifacts:/app/artifacts

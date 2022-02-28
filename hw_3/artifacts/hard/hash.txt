@@ -1,0 +1,6 @@
+A_hash = 3
+B_hash = 3
+C_hash = 3
+D_hash = 3
+AB_hash = 5
+CD_hash = 4

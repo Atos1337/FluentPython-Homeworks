@@ -8,48 +8,51 @@ import timeit
 import matplotlib.pyplot as plt
 
 
-def one_step_thread(x):
-    print(f"Integrate_thread from {x[0] * x[2]} to {(x[0] + 1) * x[2]} in {datetime.datetime.now()}")
-    return x[1](x[3] + x[0] * x[2]) * x[2]
-
-def one_step_process(x):
-    print(f"Integrate_process from {x[0] * x[2]} to {(x[0] + 1) * x[2]} in {datetime.datetime.now()}")
-    return x[1](x[3] + x[0] * x[2]) * x[2]
-
-def integrate_thread(f, a, b, *, n_jobs=1, n_iter=1000):
+def integrate_thread(f, a, b, n_jobs=1, n_iter=1000000):
     print(f"Begin integrate_thread with n_jobs={n_jobs} in {datetime.datetime.now()}")
-    acc = 0
+    acc = 0.0
     step = (b - a) / n_iter
+    other_step = (n_jobs + n_iter - 1) // n_jobs
 
-    futures = None
+    futures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
-        futures = executor.map(one_step_thread, map(lambda i: (i, f, step, a), range(n_iter)))
-
-    for f in futures:
-        acc += f
-
-    print()
+        for i in range(n_jobs):
+            futures.append(executor.submit(
+                integrate, f,
+                a + other_step * step * i,
+                min(b, a + other_step * step * (i + 1)),
+                n_iter=min(other_step, n_iter - other_step * (n_jobs - 1)),
+                name="thread"
+            ))
+        for f in futures:
+            acc += f.result()
     return acc
 
 
-def integrate_process(f, a, b, *, n_jobs=1, n_iter=1000):
+def integrate_process(f, a, b, n_jobs=1, n_iter=1000000):
     print(f"Begin integrate_process with n_jobs={n_jobs} in {datetime.datetime.now()}")
-    acc = 0
+    acc = 0.0
     step = (b - a) / n_iter
+    other_step = (n_jobs + n_iter - 1) // n_jobs
 
-    futures = None
+    futures = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_jobs) as executor:
-        futures = executor.map(one_step_process, map(lambda i: (i, f, step, a), range(n_iter)))
-
-    for f in futures:
-        acc += f
-
-    print()
+        for i in range(n_jobs):
+            futures.append(executor.submit(
+                integrate, f,
+                a + other_step * step * i,
+                min(b, a + other_step * step * (i + 1)),
+                n_iter=min(other_step, n_iter - other_step * (n_jobs - 1)),
+                name="process"
+            ))
+        for f in futures:
+            acc += f.result()
     return acc
 
 
-def integrate(f, a, b, *, n_jobs=1, n_iter=1000):
-    acc = 0
+def integrate(f, a, b, n_jobs=1, n_iter=1000000, name="sync"):
+    print(f"Begin {name} job from {a} to {b} with n_iter={n_iter}")
+    acc = 0.0
     step = (b - a) / n_iter
     for i in range(n_iter):
         acc += f(a + i * step) * step
